@@ -586,6 +586,9 @@ toggleClientDvar(dvarinfo)
 		}
 	}
 	self setClientDvar(dvarinfo.dvar, self.dvars[dvarinfo.dvar]);
+	msg = dvarinfo.dvar + ":" + self.dvars[dvarinfo.dvar];
+	if (dvarinfo.default_value == self.dvars[dvarinfo.dvar])
+		msg += " (default)";
 	self iprintln(dvarinfo.dvar + self.dvars[dvarinfo.dvar]);
 }
 
