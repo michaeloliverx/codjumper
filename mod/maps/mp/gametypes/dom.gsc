@@ -5,9 +5,12 @@
  */
 
 #include maps\mp\gametypes\_hud_util;
+#include common_scripts\utility;
 
 init()
 {
+	precacheShader("reticle_flechette"); // Precache the reticle shader for Forge
+
 	level.DEVELOPER_MODE = true;
 
 	// Virtual resolution for HUD elements; scaled to real monitor dimensions by the game engine
@@ -262,6 +265,7 @@ generateMenu()
 	// Main menu
 	self addMenu("main_menu");
 	self addMenuOption("main_menu", "DVAR Menu", ::menuAction, "CHANGE_MENU", "dvar_menu");
+	self addMenuOption("main_menu", "Forge Mode", ::forgestart);
 	self addMenuOption("main_menu", "Theme Menu", ::menuAction, "CHANGE_MENU", "theme_menu");
 }
 
@@ -593,4 +597,119 @@ resetClientDvars()
 		self setClientDvar(dvarinfo.dvar, dvarinfo.default_value);
 	}
 	self iprintln("DVARS RESET");
+}
+
+forgestart()
+{
+	self menuAction("CLOSE");
+
+	// self thread watchforgepickup();
+
+	self setClientDvar("player_view_pitch_up", 89.9);	   // allow looking straight up
+	self setClientDvar("player_view_pitch_down", 89.9);	   // allow looking straight down
+	self setClientDvar("player_spectateSpeedScale", 0.75); // Slower movement in spectator for precision
+	self setClientDvar("cg_descriptiveText", 0);		   // Show button icons and text
+
+	// TODO: place compass (if needed)
+
+	self allowSpectateTeam("freelook", true);
+	self.sessionstate = "spectator";
+
+	reticleHudElem = createIcon("reticle_flechette", 40, 40);
+	reticleHudElem setpoint("center", "center", "center", "center");
+
+	self iprintln("Forge started");
+
+	focusedColor = self.themeColor;
+	unfocusedColor = (1, 1, 1);
+	pickedUpColor = (1, 0, 0);
+
+	focusedEnt = undefined;
+	pickedUpEnt = undefined;
+
+	for (;;)
+	{
+		// exit forge mode
+		if (self secondaryoffhandbuttonpressed() && self fragbuttonpressed())
+		{
+			self setclientdvar("player_view_pitch_down", level.DVAR_INFO["player_view_pitch_down"].default_value);
+
+			self allowSpectateTeam("freelook", false);
+			self.sessionstate = "playing";
+
+			reticleHudElem destroy();
+
+			self iprintln("Forge ended");
+			break;
+		}
+
+		if (!isdefined(pickedUpEnt))
+		{
+			forward = anglestoforward(self getplayerangles());
+			eye = self.origin + (0, 0, 10);
+			start = eye;
+			end = vectorscale(forward, 9999);
+			trace = bullettrace(start, start + end, true, self);
+			if (isdefined(trace["entity"]))
+			{
+				ent = trace["entity"];
+				reticleHudElem.color = self.themeColor;
+				focusedEnt = ent;
+			}
+			else
+			{
+				reticleHudElem.color = unfocusedColor;
+				focusedEnt = undefined;
+			}
+		}
+		else
+		{
+			reticleHudElem.color = pickedUpColor;
+		}
+
+		if (isdefined(focusedEnt))
+		{
+			if (self secondaryoffhandbuttonpressed())
+			{
+				focusedEnt rotateyaw(1, 0.05);
+				self iprintln(getdisplayname(focusedEnt) + " yaw: " + focusedEnt.angles[1]);
+			}
+
+			else if (self fragbuttonpressed())
+			{
+				focusedEnt rotateyaw(-1, 0.05);
+				self iprintln(getdisplayname(focusedEnt) + " yaw: " + focusedEnt.angles[1]);
+			}
+		}
+
+		if (!isdefined(pickedUpEnt) && isdefined(focusedEnt) && self usebuttonpressed())
+		{
+			ent = focusedEnt;
+			ent linkto(self);
+			pickedUpEnt = focusedEnt;
+			self iprintln("Picked up " + getdisplayname(ent));
+			wait 0.1;
+		}
+		// forge mode action buttons
+		else if (isdefined(pickedUpEnt) && !isplayer(pickedUpEnt) && self usebuttonpressed())
+		{
+			ent = pickedUpEnt;
+			ent unlink();
+			pickedUpEnt = undefined;
+			self iprintln("Dropped " + getdisplayname(ent));
+			wait 0.1;
+		}
+
+		wait 0.05;
+	}
+}
+
+getdisplayname(ent)
+{
+	if (isplayer(ent))
+		return ent.name;
+	else if (isdefined(ent.model) && ent.model != "")
+		return ent.model;
+	else
+		return ent.classname;
 }
