@@ -191,6 +191,7 @@ initClientDvars()
 	self setClientDvar("ui_ConnectScreenTextGlowColor", 0); // Remove glow color applied to the mode and map name strings on the connect screen
 	self setClientDvar("cg_descriptiveText", 0);			// Remove spectator button icons and text
 	self setClientDvar("player_spectateSpeedScale", 1.5);	// Faster movement in spectator
+	self setClientDvar("compassSize", 0.001);				// Remove compass
 }
 
 /**
