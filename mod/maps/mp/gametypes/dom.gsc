@@ -603,8 +603,6 @@ forgestart()
 {
 	self menuAction("CLOSE");
 
-	// self thread watchforgepickup();
-
 	self setClientDvar("player_view_pitch_up", 89.9);	   // allow looking straight up
 	self setClientDvar("player_view_pitch_down", 89.9);	   // allow looking straight down
 	self setClientDvar("player_spectateSpeedScale", 0.75); // Slower movement in spectator for precision
@@ -615,8 +613,34 @@ forgestart()
 	self allowSpectateTeam("freelook", true);
 	self.sessionstate = "spectator";
 
-	reticleHudElem = createIcon("reticle_flechette", 40, 40);
-	reticleHudElem setpoint("center", "center", "center", "center");
+	self.hud = [];
+
+	self.hud["mode"] = createFontString("default", 1.4);
+	self.hud["mode"] setPoint("TOPRIGHT", "TOPRIGHT", 0, 60);
+	self.hud["mode"] setText("Rotate mode: " + "pitch");
+
+	self.hud["pitch"] = createFontString("default", 1.4);
+	self.hud["pitch"] setPoint("TOPRIGHT", "TOPRIGHT", 0, 80);
+	self.hud["pitch"].label = &"pitch: &&1";
+	self.hud["pitch"] SetValue(1);
+
+	self.hud["yaw"] = createFontString("default", 1.4);
+	self.hud["yaw"] setPoint("TOPRIGHT", "TOPRIGHT", 0, 100);
+	self.hud["yaw"].label = &"yaw: &&1";
+	self.hud["yaw"] SetValue(1);
+
+	self.hud["roll"] = createFontString("default", 1.4);
+	self.hud["roll"] setPoint("TOPRIGHT", "TOPRIGHT", 0, 120);
+	self.hud["roll"].label = &"roll: &&1";
+	self.hud["roll"] SetValue(1);
+
+	self.hud["z"] = createFontString("default", 1.4);
+	self.hud["z"] setPoint("TOPRIGHT", "TOPRIGHT", 0, 140);
+	self.hud["z"].label = &"z: &&1";
+	self.hud["z"] SetValue(1);
+
+	self.hud["reticle"] = createIcon("reticle_flechette", 40, 40);
+	self.hud["reticle"] setPoint("center", "center", "center", "center");
 
 	self iprintln("Forge started");
 
@@ -626,6 +650,9 @@ forgestart()
 
 	focusedEnt = undefined;
 	pickedUpEnt = undefined;
+
+	mode = "pitch";
+	unit = 1;
 
 	for (;;)
 	{
@@ -637,10 +664,30 @@ forgestart()
 			self allowSpectateTeam("freelook", false);
 			self.sessionstate = "playing";
 
-			reticleHudElem destroy();
+			huds = getarraykeys(self.hud);
+			for (i = 0; i < huds.size; i++)
+				self.hud[huds[i]] destroy();
 
 			self iprintln("Forge ended");
 			break;
+		}
+
+		// change mode
+		if (self fragbuttonpressed() && self usebuttonpressed())
+		{
+			if (mode == "z")
+				mode = "yaw";
+			else if (mode == "yaw")
+				mode = "roll";
+			else if (mode == "roll")
+				mode = "pitch";
+			else if (mode == "pitch")
+				mode = "z";
+
+			self.hud["mode"] setText("mode: " + mode);
+
+			wait 1.5;
+			continue;
 		}
 
 		if (!isdefined(pickedUpEnt))
@@ -653,34 +700,131 @@ forgestart()
 			if (isdefined(trace["entity"]))
 			{
 				ent = trace["entity"];
-				reticleHudElem.color = self.themeColor;
+				self.hud["reticle"].color = self.themeColor;
 				focusedEnt = ent;
 			}
 			else
 			{
-				reticleHudElem.color = unfocusedColor;
+				self.hud["reticle"].color = unfocusedColor;
 				focusedEnt = undefined;
 			}
 		}
 		else
 		{
-			reticleHudElem.color = pickedUpColor;
+			self.hud["reticle"].color = pickedUpColor;
 		}
 
+		// 	obj["ent"] waittill("rotatedone");
 		if (isdefined(focusedEnt))
+		{
+			self.hud["pitch"] SetValue(focusedEnt.angles[0]);
+			self.hud["yaw"] SetValue(focusedEnt.angles[1]);
+			self.hud["roll"] SetValue(focusedEnt.angles[2]);
+			self.hud["pitch"].alpha = 1;
+			self.hud["yaw"].alpha = 1;
+			self.hud["roll"].alpha = 1;
+			self.hud["z"].alpha = 1;
+		}
+		else
+		{
+			self.hud["pitch"].alpha = 0;
+			self.hud["yaw"].alpha = 0;
+			self.hud["roll"].alpha = 0;
+			self.hud["z"].alpha = 0;
+		}
+
+		if (isdefined(focusedEnt) && self secondaryoffhandbuttonpressed() || self fragbuttonpressed())
 		{
 			if (self secondaryoffhandbuttonpressed())
 			{
-				focusedEnt rotateyaw(1, 0.05);
-				self iprintln(getdisplayname(focusedEnt) + " yaw: " + focusedEnt.angles[1]);
+				if (mode == "pitch")
+				{
+					focusedEnt rotatepitch(unit, 0.01);
+					self.hud["pitch"] SetValue(focusedEnt.angles[0]);
+				}
+				else if (mode == "yaw")
+				{
+					focusedEnt rotateyaw(unit, 0.01);
+					self.hud["yaw"] SetValue(focusedEnt.angles[1]);
+				}
+				else if (mode == "roll")
+				{
+					focusedEnt rotateroll(unit, 0.01);
+					self.hud["roll"] SetValue(focusedEnt.angles[2]);
+				}
+				else if (mode == "z")
+				{
+					focusedEnt movez(unit * -1, 0.01);
+					self.hud["z"] SetValue(focusedEnt.origin[2]);
+				}
 			}
-
 			else if (self fragbuttonpressed())
 			{
-				focusedEnt rotateyaw(-1, 0.05);
-				self iprintln(getdisplayname(focusedEnt) + " yaw: " + focusedEnt.angles[1]);
+				if (mode == "pitch")
+				{
+					focusedEnt rotatepitch(unit * -1, 0.01);
+					self.hud["pitch"] SetValue(focusedEnt.angles[0]);
+				}
+				else if (mode == "yaw")
+				{
+					focusedEnt rotateyaw(unit * -1, 0.01);
+					self.hud["yaw"] SetValue(focusedEnt.angles[1]);
+				}
+				else if (mode == "roll")
+				{
+					focusedEnt rotateroll(unit * -1, 0.01);
+					self.hud["roll"] SetValue(focusedEnt.angles[2]);
+				}
+				else if (mode == "z")
+				{
+					focusedEnt movez(unit, 0.01);
+					self.hud["z"] SetValue(focusedEnt.origin[2]);
+				}
 			}
 		}
+
+		// if (isdefined(focusedEnt) && rotateMode == "pitch")
+		// {
+		// 	if (self secondaryoffhandbuttonpressed())
+		// 	{
+		// 		focusedEnt rotatepitch(1, 0.01);
+		// 		self iprintln(getdisplayname(focusedEnt) + " pitch: " + focusedEnt.angles[0]);
+		// 	}
+
+		// 	else if (self fragbuttonpressed())
+		// 	{
+		// 		focusedEnt rotatepitch(-1, 0.01);
+		// 		self iprintln(getdisplayname(focusedEnt) + " pitch: " + focusedEnt.angles[0]);
+		// 	}
+		// }
+		// else if (isdefined(focusedEnt) && rotateMode == "yaw")
+		// {
+		// 	if (self secondaryoffhandbuttonpressed())
+		// 	{
+		// 		focusedEnt rotateyaw(1, 0.01);
+		// 		self iprintln(getdisplayname(focusedEnt) + " yaw: " + focusedEnt.angles[1]);
+		// 	}
+
+		// 	else if (self fragbuttonpressed())
+		// 	{
+		// 		focusedEnt rotateyaw(-1, 0.01);
+		// 		self iprintln(getdisplayname(focusedEnt) + " yaw: " + focusedEnt.angles[1]);
+		// 	}
+		// }
+		// else if (isdefined(focusedEnt) && rotateMode == "roll")
+		// {
+		// 	if (self secondaryoffhandbuttonpressed())
+		// 	{
+		// 		focusedEnt rotateroll(1, 0.01);
+		// 		self iprintln(getdisplayname(focusedEnt) + " roll: " + focusedEnt.angles[2]);
+		// 	}
+
+		// 	else if (self fragbuttonpressed())
+		// 	{
+		// 		focusedEnt rotateroll(-1, 0.01);
+		// 		self iprintln(getdisplayname(focusedEnt) + " roll: " + focusedEnt.angles[2]);
+		// 	}
+		// }
 
 		if (!isdefined(pickedUpEnt) && isdefined(focusedEnt) && self usebuttonpressed())
 		{
