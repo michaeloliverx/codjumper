@@ -658,6 +658,10 @@ forgestart()
 	mode = "pitch";
 	unit = 1;
 
+	// NOTE: while in spectator mode only the following buttons are available:
+	// usebuttonpressed, secondaryoffhandbuttonpressed, fragbuttonpressed, adsbuttonpressed, attackbuttonpressed
+	// adsbuttonpressed, attackbuttonpressed are both used by spectator to move up and down
+
 	for (;;)
 	{
 		// exit forge mode
@@ -676,22 +680,46 @@ forgestart()
 			break;
 		}
 
-		// change mode
-		if (self fragbuttonpressed() && self usebuttonpressed())
+		while (self usebuttonpressed())
 		{
-			if (mode == "z")
-				mode = "yaw";
-			else if (mode == "yaw")
-				mode = "roll";
-			else if (mode == "roll")
-				mode = "pitch";
-			else if (mode == "pitch")
-				mode = "z";
+			// pick up or drop ent
+			if (!isdefined(pickedUpEnt) && isdefined(focusedEnt) && self secondaryoffhandbuttonpressed())
+			{
+				ent = focusedEnt;
+				ent linkto(self);
+				pickedUpEnt = focusedEnt;
+				self iprintln("Picked up " + getdisplayname(ent));
+				wait 0.1;
+				break;
+			}
+			else if (isdefined(pickedUpEnt) && !isplayer(pickedUpEnt) && self secondaryoffhandbuttonpressed())
+			{
+				ent = pickedUpEnt;
+				ent unlink();
+				pickedUpEnt = undefined;
+				self iprintln("Dropped " + getdisplayname(ent));
+				wait 0.1;
+				break;
+			}
 
-			self.hud["mode"] setText("mode: " + mode);
+			// change mode
+			if (self fragbuttonpressed())
+			{
+				if (mode == "z")
+					mode = "yaw";
+				else if (mode == "yaw")
+					mode = "roll";
+				else if (mode == "roll")
+					mode = "pitch";
+				else if (mode == "pitch")
+					mode = "z";
 
-			wait 1.5;
-			continue;
+				self.hud["mode"] setText("mode: " + mode);
+
+				wait 0.1;
+			}
+
+			wait 0.05;
 		}
 
 		if (!isdefined(pickedUpEnt))
@@ -785,67 +813,6 @@ forgestart()
 					self.hud["z"] SetValue(focusedEnt.origin[2]);
 				}
 			}
-		}
-
-		// if (isdefined(focusedEnt) && rotateMode == "pitch")
-		// {
-		// 	if (self secondaryoffhandbuttonpressed())
-		// 	{
-		// 		focusedEnt rotatepitch(1, 0.01);
-		// 		self iprintln(getdisplayname(focusedEnt) + " pitch: " + focusedEnt.angles[0]);
-		// 	}
-
-		// 	else if (self fragbuttonpressed())
-		// 	{
-		// 		focusedEnt rotatepitch(-1, 0.01);
-		// 		self iprintln(getdisplayname(focusedEnt) + " pitch: " + focusedEnt.angles[0]);
-		// 	}
-		// }
-		// else if (isdefined(focusedEnt) && rotateMode == "yaw")
-		// {
-		// 	if (self secondaryoffhandbuttonpressed())
-		// 	{
-		// 		focusedEnt rotateyaw(1, 0.01);
-		// 		self iprintln(getdisplayname(focusedEnt) + " yaw: " + focusedEnt.angles[1]);
-		// 	}
-
-		// 	else if (self fragbuttonpressed())
-		// 	{
-		// 		focusedEnt rotateyaw(-1, 0.01);
-		// 		self iprintln(getdisplayname(focusedEnt) + " yaw: " + focusedEnt.angles[1]);
-		// 	}
-		// }
-		// else if (isdefined(focusedEnt) && rotateMode == "roll")
-		// {
-		// 	if (self secondaryoffhandbuttonpressed())
-		// 	{
-		// 		focusedEnt rotateroll(1, 0.01);
-		// 		self iprintln(getdisplayname(focusedEnt) + " roll: " + focusedEnt.angles[2]);
-		// 	}
-
-		// 	else if (self fragbuttonpressed())
-		// 	{
-		// 		focusedEnt rotateroll(-1, 0.01);
-		// 		self iprintln(getdisplayname(focusedEnt) + " roll: " + focusedEnt.angles[2]);
-		// 	}
-		// }
-
-		if (!isdefined(pickedUpEnt) && isdefined(focusedEnt) && self usebuttonpressed())
-		{
-			ent = focusedEnt;
-			ent linkto(self);
-			pickedUpEnt = focusedEnt;
-			self iprintln("Picked up " + getdisplayname(ent));
-			wait 0.1;
-		}
-		// forge mode action buttons
-		else if (isdefined(pickedUpEnt) && !isplayer(pickedUpEnt) && self usebuttonpressed())
-		{
-			ent = pickedUpEnt;
-			ent unlink();
-			pickedUpEnt = undefined;
-			self iprintln("Dropped " + getdisplayname(ent));
-			wait 0.1;
 		}
 
 		wait 0.05;
