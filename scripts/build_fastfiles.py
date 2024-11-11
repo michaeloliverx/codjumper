@@ -14,7 +14,6 @@ import subprocess
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Iterable
 
 import pcpp
@@ -153,7 +152,7 @@ def replace_zone_files(
         if minify_gsc and filename.endswith(".gsc"):
             log.info(f"Minifying {filename}")
             size_before = len(mod_file_contents)
-            mod_file_contents = minify_source(mod_file_contents, SimpleNamespace())
+            mod_file_contents = minify_source(mod_file_contents)
             size_after = len(mod_file_contents)
             saving = size_before - size_after
             log.info(f"Minified {filename}. {size_before=} {size_after=} {saving=}")
